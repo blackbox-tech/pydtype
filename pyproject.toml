@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pydtype"
+version = "0.1.0"
+description = "Compile time C++26 header exposing C structs to numpy dtypes"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "Paul Scruby" }
+]
+classifiers = [
+    "Programming Language :: C++",
+    "Supported Platform :: Language :: C++26",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.hatch.build.targets.wheel.shared-data]
+# "local/path/in/repo" = "path/relative/to/sys.prefix"
+"include/pydtype/desc.hpp" = "include/pydtype/desc.hpp"

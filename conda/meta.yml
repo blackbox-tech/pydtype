@@ -1,0 +1,27 @@
+{% set name = "pydtype" %}
+{% set version = "0.1.0" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  git_url:  https://github.com/blackbox-tech/pydtype.git
+  git_rev:  {{ version }}
+
+build:
+  noarch: generic
+  number: 0
+  script:
+    - {{ PYTHON }} -c "import shutil, os; dst = os.path.join(os.environ['PREFIX'], 'include', 'pydtype'); os.makedirs(dst, exist_ok=True); shutil.copy('include/pydtype/desc.hpp', dst)"
+
+requirements:
+  host:
+    - python >=3.8
+  run:
+    - python >=3.8
+
+about:
+  home: https://github.com/blackbox-tech/pydtype
+  license: MIT
+  summary: 'Compile time C++26 header exposing C structs to numpy dtypes'
