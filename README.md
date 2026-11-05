@@ -83,7 +83,7 @@ data from C++ to python which can be accessed directly by numpy.
 
 auto ptr = new Simple[10];
 auto cap = py::capsule(ptr, [](void *v) { delete[] reinterpret_cast<Simple*>(v); });
-auto dtype = py::dtype(pydtype::desc<Simple>());
+auto dtype = py::dtype::from_args(py::eval(pydtype::desc<Simple>()));
 return py::array(dtype, {10}, ptr, cap);
 ```
 
