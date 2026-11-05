@@ -63,7 +63,7 @@ public:
 #pragma pack(pop) 
 ```
 
-`pydtype::desc<Complexpydtype::Endian::LITTLE>()` will produce:
+`pydtype::desc<Complex. pydtype::Endian::LITTLE>()` will produce:
 
 ```
 {'names': ['time', 'label', 'type', 'data'], 'formats': ['<M8[ns]', 'S12', 'u1', {
