@@ -17,6 +17,8 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <cmath>
+
 
 namespace pydtype {
 
@@ -33,29 +35,23 @@ template <std::size_t N>
 struct FixedString {
     char data[N]{};
 
-    // Allows implicit conversion to a std::string_view
     constexpr operator std::string_view() const {
         return std::string_view(data, N);
     }
 };
 
-template <std::size_t N>
-consteval auto const_to_string() {
+template <std::size_t N> consteval auto const_to_string() {
     if constexpr (N == 0) {
         return FixedString<1>{{'0'}};
     } else {
-        constexpr auto count_digits = [](std::size_t val) {
-            std::size_t len = 0;
-
-            while (val > 0) {
-                len++;
-                val /= 10;
+        constexpr auto num_digits = [](std::size_t val) {
+            if (val == 0) {
+                return std::size_t{1};
             }
-
-            return len;
+            return static_cast<std::size_t>(std::log10(val)) + 1;
         };
 
-        constexpr std::size_t len = count_digits(N);
+        constexpr std::size_t len = num_digits(N);
         FixedString<len> buffer;
         std::size_t tmp = N;
 
@@ -63,13 +59,11 @@ consteval auto const_to_string() {
             buffer.data[len - 1 - i] = static_cast<char>('0' + (tmp % 10));
             tmp /= 10;
         }
-
         return buffer;
     }
 }
 
-template <typename T>
-consteval std::string_view array_dims() {
+template <typename T> consteval std::string_view array_dims() {
     if constexpr (std::is_array_v<T>) {
         static constexpr std::size_t ext = std::extent_v<T>;
         static constexpr auto num_str = const_to_string<ext>();
@@ -77,7 +71,6 @@ consteval std::string_view array_dims() {
 
         constexpr std::size_t total_size = 2 + sizeof(num_str.data) + next_view.size();
 
-        // Statically cache the block so the std::string_view points to a valid lifetime
         static constexpr auto assembled = []() {
             FixedString<total_size> buffer;
             buffer.data[0] = ',';
@@ -91,6 +84,7 @@ consteval std::string_view array_dims() {
             for (std::size_t i = 0; i < next_view.size(); i++) {
                 buffer.data[idx++] = next_view[i];
             }
+
             return buffer;
         }();
 
@@ -115,11 +109,9 @@ template<> consteval std::string_view endian_prefix<Endian::LITTLE>() { return "
 template<> consteval std::string_view endian_prefix<Endian::BIG>() { return ">"; }
 template<> consteval std::string_view endian_prefix<Endian::NATIVE>() { return std::endian::native == std::endian::little ? "<" : ">"; }
 
-template<typename T>
-consteval std::string_view np_scalar_type() {
+template<typename T> consteval std::string_view np_scalar_type() {
     if constexpr (is_chrono_time_point<T>::value) {
         using duration_t = typename T::duration;
-
         if constexpr (std::same_as<duration_t, std::chrono::nanoseconds>) {
             return "M8[ns]";
         } else if constexpr (std::same_as<duration_t, std::chrono::microseconds>) {
@@ -133,7 +125,7 @@ consteval std::string_view np_scalar_type() {
         } else if constexpr (std::same_as<duration_t, std::chrono::hours>) {
             return "M8[h]";
         } else {
-            static_assert(always_false<T>::value, "Unsupported std::chrono::time_point resolution for dtype description");
+            static_assert(always_false<T>::value, "Unsupported std::chrono::time_point resolution");
         }
     } else if constexpr (is_chrono_duration<T>::value) {
         if constexpr (std::same_as<T, std::chrono::nanoseconds>) {
@@ -149,19 +141,19 @@ consteval std::string_view np_scalar_type() {
         } else if constexpr (std::same_as<T, std::chrono::hours>) {
             return "m8[h]";
         } else {
-            static_assert(always_false<T>::value, "Unsupported std::chrono::duration resolution for dtype description");
+            static_assert(always_false<T>::value, "Unsupported std::chrono::duration resolution");
         }
     } else if constexpr (std::same_as<T, bool>) {
         return "b1";
     } else if constexpr (std::same_as<T, char>) {
         return "S1";
-    } else if constexpr ((std::same_as<T, signed char>) or (std::same_as<T, int8_t>)) {
-       return "i1";
-    } else if constexpr ((std::same_as<T, unsigned char>) or (std::same_as<T, uint8_t>) or (std::same_as<T, std::byte>)) {
+    } else if constexpr (std::same_as<T, signed char> or std::same_as<T, int8_t>) {
+        return "i1";
+    } else if constexpr (std::same_as<T, unsigned char> or std::same_as<T, uint8_t> or std::same_as<T, std::byte>) {
         return "u1";
-    } else if constexpr ((std::same_as<T, short>) or (std::same_as<T, int16_t>)) {
+    } else if constexpr (std::same_as<T, short> or std::same_as<T, int16_t>) {
         return "i2";
-    } else if constexpr ((std::same_as<T, unsigned short>) or (std::same_as<T, uint16_t>)) {
+    } else if constexpr (std::same_as<T, unsigned short> or std::same_as<T, uint16_t>) {
         return "u2";
     } else if constexpr (std::same_as<T, char16_t>) {
         return "U2";
@@ -190,56 +182,64 @@ consteval std::string_view np_scalar_type() {
             return "g";
         }
     }
-
     return "";
 }
 
-template<typename T>
-consteval bool explicit_layout() {
-    using UncvR = underlying_type_t<std::remove_cvref_t<T>>;
+template<typename T> consteval bool explicit_layout() {
+    using CleanT = std::remove_cvref_t<T>;
+    using UncvR = typename underlying_type<CleanT>::type;
 
-    if constexpr (not (std::is_class_v<UncvR> or std::is_union_v<UncvR>)) {
+    if constexpr (std::is_union_v<UncvR>) {
+        return true;
+    } else if constexpr (not std::is_class_v<UncvR>) {
         return false;
     }
 
     constexpr auto ctx = std::meta::access_context::unchecked();
-    static constexpr auto members = std::define_static_array(std::meta::nonstatic_data_members_of(^^UncvR, ctx));
-    std::size_t expected_offset = 0;
-    bool is_explicit = false;
 
-    template for (constexpr std::meta::info member : members) {
-        using FieldType = typename[:std::meta::type_of(member):];
-        constexpr std::string_view field_name = std::meta::identifier_of(member);
+    if constexpr (not std::meta::bases_of(^^UncvR, ctx).empty()) {
+        return true;
+    } else {
+        static constexpr auto members = std::define_static_array(std::meta::nonstatic_data_members_of(^^UncvR, ctx));
+        std::size_t expected_offset = 0;
+        bool is_explicit = false;
 
-        if constexpr (std::is_union_v<FieldType> and field_name.empty()) {
-            is_explicit = true;
-        } else {
-            constexpr std::size_t actual_offset = std::is_union_v<UncvR> ? 0 : std::meta::offset_of(member).bytes;
-            if (actual_offset != expected_offset) {
+        template for (constexpr std::meta::info member : members) {
+            using FieldType = typename[:std::meta::type_of(member):];
+            constexpr std::string_view field_name = std::meta::identifier_of(member);
+
+            if constexpr (std::is_union_v<FieldType> and field_name.empty()) {
                 is_explicit = true;
+            } else {
+                constexpr std::size_t actual_offset = std::is_union_v<UncvR> ? 0 : std::meta::offset_of(member).bytes;
+
+                if (actual_offset != expected_offset) {
+                    is_explicit = true;
+                }
+
+                expected_offset = actual_offset + sizeof(FieldType);
             }
-            expected_offset = actual_offset + sizeof(FieldType);
         }
-    }
 
-    if (sizeof(UncvR) != expected_offset) {
-        is_explicit = true;
-    }
+        if (sizeof(UncvR) != expected_offset) {
+            is_explicit = true;
+        }
 
-    return is_explicit;
+        return is_explicit;
+    }
 }
 
 } // namespace detail
+
 
 //----------------------------------------------------------------------------------------------------------------------
 // This function generates a numpy dtype description for a C structure using reflection. It supports nested types,
 // multi-dimensional arrays, enums, named and anonymous unions, and chrono to datetime64 and timedelta64 conversion.
 // Where the numpy default alignment differs from C it will update the dtype to match.
 //
-template <typename T, Endian E = Endian::NONE>
-std::string desc() {
+template <typename T, Endian E = Endian::NONE> std::string desc() {
     using RawT = std::remove_cvref_t<T>;
-    using UncvR = detail::underlying_type_t<RawT>;
+    using UncvR = typename detail::underlying_type<RawT>::type;
 
     if constexpr (std::is_array_v<UncvR>) {
         using ElementType = std::remove_all_extents_t<UncvR>;
@@ -261,11 +261,10 @@ std::string desc() {
         }
     } else if constexpr (std::is_union_v<UncvR> or std::is_class_v<UncvR>) {
         constexpr auto ctx = std::meta::access_context::unchecked();
-        static_assert(std::meta::bases_of(^^UncvR, ctx).empty(), "Inheritance is not supported for dtype extraction");
+        constexpr bool has_bases = not std::meta::bases_of(^^UncvR, ctx).empty();
 
-        static constexpr auto members = std::define_static_array(std::meta::nonstatic_data_members_of(^^UncvR, ctx));
-
-        if constexpr (not detail::explicit_layout<UncvR>()) {  // default numpy layout
+        if constexpr (not has_bases and not detail::explicit_layout<UncvR>()) {  // default numpy layout
+            static constexpr auto members = std::define_static_array(std::meta::nonstatic_data_members_of(^^UncvR, ctx));
             std::string list_format = "[";
             bool is_first = true;
 
@@ -283,16 +282,41 @@ std::string desc() {
 
             list_format += "]";
             return list_format;
-        } else {  // explicit dict layout due to padding, alignment gaps, or anonymous fields
+        } else {  // explicit dict layout due to base classes, padding, or unions
             std::string names = "'names': [";
             std::string formats = "'formats': [";
             std::string offsets = "'offsets': [";
             bool is_first = true;
 
-            template for (constexpr std::meta::info member : members) {
+            if constexpr (has_bases) {
+                static constexpr auto bases = std::define_static_array(std::meta::bases_of(^^UncvR, ctx));
+
+                template for (constexpr std::meta::info base : bases) {
+                    using BaseType = typename[:std::meta::type_of(base):];
+                    constexpr std::size_t base_offset = std::meta::offset_of(base).bytes;
+                    static constexpr auto base_members = std::define_static_array(std::meta::nonstatic_data_members_of(^^BaseType, ctx));
+
+                    template for (constexpr std::meta::info bm : base_members) {
+                        if (not is_first) {
+                            names += ", ";
+                            formats += ", ";
+                            offsets += ", ";
+                        }
+
+                        is_first = false;
+                        names += "'" + std::string(std::meta::identifier_of(bm)) + "'";
+                        formats += desc<typename[:std::meta::type_of(bm):], E>();
+                        offsets += std::to_string(base_offset + (std::is_union_v<BaseType> ? 0 : std::meta::offset_of(bm).bytes));
+                    }
+                }
+            }
+
+            static constexpr auto local_members = std::define_static_array(std::meta::nonstatic_data_members_of(^^UncvR, ctx));
+
+            template for (constexpr std::meta::info member : local_members) {
                 constexpr std::string_view field_name = std::meta::identifier_of(member);
                 using FieldType = typename[:std::meta::type_of(member):];
-                constexpr std::size_t base_offset = std::is_union_v<UncvR> ? 0 : std::meta::offset_of(member).bytes;
+                constexpr std::size_t local_offset = std::is_union_v<UncvR> ? 0 : std::meta::offset_of(member).bytes;
 
                 if constexpr (std::is_union_v<FieldType> and field_name.empty()) {   // flatten anonymous unions
                     static constexpr auto union_members = std::define_static_array(std::meta::nonstatic_data_members_of(^^FieldType, ctx));
@@ -310,7 +334,7 @@ std::string desc() {
                         is_first = false;
                         names += "'" + std::string(u_name) + "'";
                         formats += desc<UFieldType, E>();
-                        offsets += std::to_string(base_offset);
+                        offsets += std::to_string(local_offset);
                     }
                 } else {
                     if (not is_first) {
@@ -322,7 +346,7 @@ std::string desc() {
                     is_first = false;
                     names += "'" + std::string(field_name) + "'";
                     formats += desc<FieldType, E>();
-                    offsets += std::to_string(base_offset);
+                    offsets += std::to_string(local_offset);
                 }
             }
 
@@ -336,4 +360,4 @@ std::string desc() {
     }
 }
 
-} // namespace pydtype
+}  // namespace pydtype
