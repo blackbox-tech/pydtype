@@ -17,7 +17,6 @@ struct Simple {
 ```
 
 `pydtype::desc<Simple>()` will produce:
-
 ```
 [('len', 'i4'), ('coords', ('f4', 3)), ('value', 'f8')]
 ```
@@ -64,11 +63,9 @@ public:
 #pragma pack(pop) 
 ```
 
-`pydtype::desc<Complex>()` will produce:
+`pydtype::desc<Complexpydtype::Endian::LITTLE>()` will produce:
 
 ```
-pydtype::desc<Complexpydtype::Endian::LITTLE>()
-
 {'names': ['time', 'label', 'type', 'data'], 'formats': ['<M8[ns]', 'S12', 'u1', {
     'names': ['line', 'transform'], 'formats': [([('x', '<f8'), ('y', '<f8'),('z', '<f8')], 2), ('<f4', 4, 4)], 'offsets': [0, 0],'itemsize': 64}], 
  'offsets': [0, 8, 20, 21], 'itemsize': 85}
@@ -95,3 +92,7 @@ wider numpy community. I've only has time to test it with gcc16.2 on linux. To c
 `-std=c++26 -freflection` flags.
 
 I welcome contributions, especially to get it work on other compilers and platforms.
+
+Thanks,
+
+Paul
