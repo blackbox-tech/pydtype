@@ -19,7 +19,6 @@ Paul
 ```c++
 #include <pydtype/desc.hpp>
 
-
 struct Simple {
     std::uint32_t len;
     float coords[3];
