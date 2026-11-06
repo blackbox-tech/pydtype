@@ -126,22 +126,22 @@ conda install --channel=conda-forge pydtype-cpp
 
 #### pip
 ```commandline
-git clone https://github.com/blackbox-tech/pydtype.git
+git clone git@github.com:blackbox-tech/pydtype.git
 cd pydtype
 python -m pip install .
 ```
 
 #### uv
 ```commandline
-git clone https://github.com/blackbox-tech/pydtype.git
+git clone git@github.com:blackbox-tech/pydtype.git
 cd pydtype
 uv pip install .
 ```
 
 #### conda
 ```commandline
-git clone https://github.com/blackbox-tech/pydtype.git
-cd pydtype/conda
+git clone git@github.com:blackbox-tech/pydtype.git
+cd pydtype
 conda build .
-conda install --use-local pydtype
+conda install --use-local pydtype-cpp
 ```
