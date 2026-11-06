@@ -12,11 +12,16 @@ authors = [
     { name = "Paul Scruby" }
 ]
 classifiers = [
+    "Programming Language :: Python :: 3",
     "Programming Language :: C++",
-    "Supported Platform :: Language :: C++26",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[tool.hatch.build.targets.wheel]
+pure_python = false
+
+[tool.hatch.build.targets.wheel.force-include]
+"include/pydtype" = "pydtype"
+
 [tool.hatch.build.targets.wheel.shared-data]
-# "local/path/in/repo" = "path/relative/to/sys.prefix"
 "include/pydtype/desc.hpp" = "include/pydtype/desc.hpp"

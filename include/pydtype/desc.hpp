@@ -265,7 +265,7 @@ template <typename T, Endian E = Endian::NONE> std::string desc() {
 
         if constexpr (not has_bases and not detail::explicit_layout<UncvR>()) {  // default numpy layout
             static constexpr auto members = std::define_static_array(std::meta::nonstatic_data_members_of(^^UncvR, ctx));
-            std::string list_format = "[";
+            std::string list = "[";
             bool is_first = true;
 
             template for (constexpr std::meta::info member : members) {
@@ -273,15 +273,15 @@ template <typename T, Endian E = Endian::NONE> std::string desc() {
                 using FieldType = typename[:std::meta::type_of(member):];
 
                 if (not is_first) {
-                    list_format += ", ";
+                    list += ", ";
                 }
 
                 is_first = false;
-                list_format += "('" + std::string(field_name) + "', " + desc<FieldType, E>() + ")";
+                list += "('" + std::string(field_name) + "', " + desc<FieldType, E>() + ")";
             }
 
-            list_format += "]";
-            return list_format;
+            list += "]";
+            return list;
         } else {  // explicit dict layout due to base classes, padding, or unions
             std::string names = "'names': [";
             std::string formats = "'formats': [";
@@ -316,7 +316,7 @@ template <typename T, Endian E = Endian::NONE> std::string desc() {
             template for (constexpr std::meta::info member : local_members) {
                 constexpr std::string_view field_name = std::meta::identifier_of(member);
                 using FieldType = typename[:std::meta::type_of(member):];
-                constexpr std::size_t local_offset = std::is_union_v<UncvR> ? 0 : std::meta::offset_of(member).bytes;
+                constexpr std::size_t offset = std::is_union_v<UncvR> ? 0 : std::meta::offset_of(member).bytes;
 
                 if constexpr (std::is_union_v<FieldType> and field_name.empty()) {   // flatten anonymous unions
                     static constexpr auto union_members = std::define_static_array(std::meta::nonstatic_data_members_of(^^FieldType, ctx));
@@ -334,7 +334,7 @@ template <typename T, Endian E = Endian::NONE> std::string desc() {
                         is_first = false;
                         names += "'" + std::string(u_name) + "'";
                         formats += desc<UFieldType, E>();
-                        offsets += std::to_string(local_offset);
+                        offsets += std::to_string(offset);
                     }
                 } else {
                     if (not is_first) {
@@ -346,7 +346,7 @@ template <typename T, Endian E = Endian::NONE> std::string desc() {
                     is_first = false;
                     names += "'" + std::string(field_name) + "'";
                     formats += desc<FieldType, E>();
-                    offsets += std::to_string(local_offset);
+                    offsets += std::to_string(offset);
                 }
             }
 
