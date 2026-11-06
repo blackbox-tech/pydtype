@@ -1,4 +1,4 @@
-{% set name = "pydtype" %}
+{% set name = "pydtype-cpp" %}
 {% set version = "0.1.0" %}
 
 package:
@@ -24,4 +24,9 @@ requirements:
 about:
   home: https://github.com/blackbox-tech/pydtype
   license: MIT
+  license_file: LICENSE
   summary: 'Compile time C++26 header exposing C structs to numpy dtypes'
+
+extra:
+  recipe-maintainers:
+    - blackbox-tech
