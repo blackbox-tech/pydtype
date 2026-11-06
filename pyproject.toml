@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pydtype"
+name = "pydtype-cpp"
 version = "0.1.0"
 description = "Compile time C++26 header exposing C structs to numpy dtypes"
 readme = "README.md"
