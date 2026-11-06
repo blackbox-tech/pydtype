@@ -106,23 +106,40 @@ return py::array(dtype, {10}, ptr, cap);
 
 You can use pip, uv and conda to install the pydtype header file into your current python environment.
 
-### Installing from a local repos (development)
+### Installing from a public repository
 
-### pip
+#### pypi
+```commandline
+pip install pydtype-cpp
+```
+
+#### uv
+```commandline
+uv pip install pydtype-cpp
+```
+
+#### conda-forge
+```commandline
+conda install --channel=conda-forge pydtype-cpp
+```
+
+### Installing from a local repository (development)
+
+#### pip
 ```commandline
 git clone https://github.com/blackbox-tech/pydtype.git
 cd pydtype
 python -m pip install .
 ```
 
-### uv
+#### uv
 ```commandline
 git clone https://github.com/blackbox-tech/pydtype.git
 cd pydtype
 uv pip install .
 ```
 
-### conda
+#### conda
 ```commandline
 git clone https://github.com/blackbox-tech/pydtype.git
 cd pydtype/conda
